@@ -1,0 +1,312 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Defy Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Safety Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      // Mandate verification or trust context provider
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-+%]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Attribute-Based role queries using get() primitives
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+
+    function hasUserRole(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function isAdmin() {
+      return isSignedIn() && hasUserRole(request.auth.uid) && getUserRole(request.auth.uid) == 'Admin';
+    }
+
+    function isQA() {
+      return isSignedIn() && hasUserRole(request.auth.uid) && (
+        getUserRole(request.auth.uid) == 'Admin' ||
+        getUserRole(request.auth.uid) == 'QA Lead' ||
+        getUserRole(request.auth.uid) == 'QA Specialist' ||
+        getUserRole(request.auth.uid) == 'QA Engineer'
+      );
+    }
+
+    // 3. ENTIRE SPECIFIC DATA SHAPE VALIDATORS
+    function isValidUser(u) {
+      return u.keys().hasAll(['id', 'email', 'name', 'role', 'status']) &&
+        u.id is string && u.id.size() <= 128 &&
+        u.email is string && u.email.size() <= 128 &&
+        u.name is string && u.name.size() >= 2 && u.name.size() <= 128 &&
+        u.role in ['Admin', 'QA Lead', 'QA Specialist', 'QA Engineer', 'Viewer'] &&
+        u.status in ['active', 'inactive'];
+    }
+
+    function isValidProject(p) {
+      return p.keys().hasAll(['id', 'name', 'status']) &&
+        p.id is string && p.id.size() <= 128 &&
+        p.name is string && p.name.size() >= 2 && p.name.size() <= 128 &&
+        p.status in ['Active', 'Archived'];
+    }
+
+    function isValidEnvironment(e) {
+      return e.keys().hasAll(['id', 'name', 'url', 'status']) &&
+        e.id is string && e.id.size() <= 128 &&
+        e.name is string && e.name.size() >= 2 && e.name.size() <= 64 &&
+        e.url is string && e.url.size() <= 256 &&
+        e.status in ['Active', 'Down'];
+    }
+
+    function isValidDefect(d) {
+      return d.keys().hasAll(['id', 'defect_id', 'title', 'severity', 'priority', 'status', 'reporter_id', 'project_id', 'environment_id']) &&
+        d.id is string && d.id.size() <= 128 &&
+        d.defect_id is string && d.defect_id.size() <= 32 &&
+        d.title is string && d.title.size() >= 3 && d.title.size() <= 128 &&
+        d.severity in ['Low', 'Medium', 'High', 'Critical'] &&
+        d.priority in ['Low', 'Medium', 'High', 'Critical'] &&
+        d.status in ['Open', 'In Progress', 'Resolved', 'Closed'] &&
+        d.reporter_id is string && d.reporter_id.size() <= 128 &&
+        d.project_id is string && d.project_id.size() <= 128 &&
+        d.environment_id is string && d.environment_id.size() <= 128;
+    }
+
+    function isValidComment(c) {
+      return c.keys().hasAll(['id', 'defect_id', 'author_id', 'author_name', 'comment', 'created_at']) &&
+        c.id is string && c.id.size() <= 128 &&
+        c.defect_id is string && c.defect_id.size() <= 128 &&
+        c.author_id is string && c.author_id.size() <= 128 &&
+        c.author_name is string && c.author_name.size() <= 128 &&
+        c.comment is string && c.comment.size() >= 1 && c.comment.size() <= 2048 &&
+        c.created_at is string;
+    }
+
+    function isValidTestSuite(ts) {
+      return ts.keys().hasAll(['id', 'name', 'project_id']) &&
+        ts.id is string && ts.id.size() <= 128 &&
+        ts.name is string && ts.name.size() >= 2 && ts.name.size() <= 128 &&
+        ts.project_id is string && ts.project_id.size() <= 128;
+    }
+
+    function isValidTestCase(tc) {
+      return tc.keys().hasAll(['id', 'suite_id', 'title', 'expected_result']) &&
+        tc.id is string && tc.id.size() <= 128 &&
+        tc.suite_id is string && tc.suite_id.size() <= 128 &&
+        tc.title is string && tc.title.size() >= 2 && tc.title.size() <= 128 &&
+        tc.expected_result is string && tc.expected_result.size() <= 1024;
+    }
+
+    function isValidTestRun(tr) {
+      return tr.keys().hasAll(['id', 'name', 'suite_id', 'environment_id', 'status', 'creator_id']) &&
+        tr.id is string && tr.id.size() <= 128 &&
+        tr.name is string && tr.name.size() >= 2 && tr.name.size() <= 128 &&
+        tr.suite_id is string && tr.suite_id.size() <= 128 &&
+        tr.environment_id is string && tr.environment_id.size() <= 128 &&
+        tr.creator_id is string && tr.creator_id.size() <= 128 &&
+        tr.status in ['Passed', 'Failed', 'Partial', 'Running'];
+    }
+
+    function isValidPerformanceMetric(pm) {
+      return pm.keys().hasAll(['id', 'environment_id', 'endpoint', 'latency', 'throughput', 'error_rate', 'timestamp']) &&
+        pm.id is string && pm.id.size() <= 128 &&
+        pm.environment_id is string && pm.environment_id.size() <= 128 &&
+        pm.endpoint is string && pm.endpoint.size() <= 128 &&
+        pm.latency is number && pm.throughput is number && pm.error_rate is number &&
+        pm.timestamp is string;
+    }
+
+    function isValidNotification(nt) {
+      return nt.keys().hasAll(['id', 'user_id', 'type', 'title', 'message', 'read', 'created_at']) &&
+        nt.id is string && nt.id.size() <= 128 &&
+        nt.user_id is string && nt.user_id.size() <= 128 &&
+        nt.type is string && nt.type.size() <= 64 &&
+        nt.title is string && nt.title.size() <= 128 &&
+        nt.message is string && nt.message.size() <= 1024 &&
+        nt.read is bool &&
+        nt.created_at is string;
+    }
+
+    function isValidActivity(act) {
+      return act.keys().hasAll(['id', 'user_id', 'user_name', 'category', 'action', 'created_at']) &&
+        act.id is string && act.id.size() <= 128 &&
+        act.user_id is string && act.user_id.size() <= 128 &&
+        act.user_name is string && act.user_name.size() <= 128 &&
+        act.category in ['Auth', 'Defect', 'Test', 'Settings', 'Project'] &&
+        act.action is string && act.action.size() <= 256 &&
+        act.created_at is string;
+    }
+
+    function isValidUserSettings(us) {
+      return us.keys().hasAll(['id', 'user_id', 'email_alerts', 'browser_push', 'automation_sync', 'urgent_only', 'theme', 'created_at']) &&
+        us.id is string && us.id.size() <= 128 &&
+        us.user_id is string && us.user_id.size() <= 128 &&
+        us.email_alerts is bool && us.browser_push is bool &&
+        us.automation_sync is bool && us.urgent_only is bool &&
+        us.theme in ['light', 'dark'] &&
+        us.created_at is string;
+    }
+
+    function isValidAttachment(att) {
+      return att.keys().hasAll(['id', 'defect_id', 'name', 'url', 'size', 'mime_type', 'uploaded_by_id', 'created_at']) &&
+        att.id is string && att.id.size() <= 128 &&
+        att.defect_id is string && att.defect_id.size() <= 128 &&
+        att.name is string && att.name.size() <= 256 &&
+        att.url is string && att.url.size() <= 512 &&
+        att.size is number &&
+        att.mime_type is string && att.mime_type.size() <= 128 &&
+        att.uploaded_by_id is string && att.uploaded_by_id.size() <= 128 &&
+        att.created_at is string;
+    }
+
+    // 4. COLLECTION ACCESS RULES
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.id != null; 
+      allow create: if isVerified() && isValidId(userId) && isValidUser(incoming()) && (isOwner(userId) || isAdmin());
+      allow update: if isVerified() && isValidId(userId) && isValidUser(incoming()) && (
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'email', 'avatar', 'department', 'designation', 'status'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Projects Collection
+    match /projects/{projectId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(projectId) && isValidProject(incoming());
+      allow update: if isQA() && isValidId(projectId) && isValidProject(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'status'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Environments Collection
+    match /environments/{envId} {
+      allow read: if isSignedIn();
+      allow create, update: if isQA() && isValidId(envId) && isValidEnvironment(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Defects Collection
+    match /defects/{defectId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(defectId) && isValidDefect(incoming()) && incoming().reporter_id == request.auth.uid;
+      allow update: if isQA() && isValidId(defectId) && isValidDefect(incoming()) && (
+        // Action: Self reporting-repair elements
+        (incoming().reporter_id == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'severity', 'priority', 'status', 'project_id', 'environment_id', 'assignee_id'])) ||
+        // Action: Status transitions or triaging by general QA Engineers/Leads
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'assignee_id', 'priority'])
+      );
+      allow delete: if isAdmin() || (isQA() && existing().reporter_id == request.auth.uid);
+    }
+
+    // Defect Comments Collection
+    match /defect_comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(commentId) && isValidComment(incoming()) && (
+        incoming().author_id == request.auth.uid &&
+        exists(/databases/$(database)/documents/defects/$(incoming().defect_id))
+      );
+      allow delete: if isAdmin() || (existing().author_id == request.auth.uid);
+    }
+
+    // Test Suites Collection
+    match /test_suites/{suiteId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(suiteId) && isValidTestSuite(incoming());
+      allow update: if isQA() && isValidId(suiteId) && isValidTestSuite(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'project_id'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Test Cases Collection
+    match /test_cases/{caseId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(caseId) && isValidTestCase(incoming()) && exists(/databases/$(database)/documents/test_suites/$(incoming().suite_id));
+      allow update: if isQA() && isValidId(caseId) && isValidTestCase(incoming());
+      allow delete: if isQA();
+    }
+
+    // Test Runs Collection
+    match /test_runs/{runId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(runId) && isValidTestRun(incoming()) && (
+        incoming().creator_id == request.auth.uid &&
+        exists(/databases/$(database)/documents/test_suites/$(incoming().suite_id))
+      );
+      allow update: if isQA() && isValidId(runId) && isValidTestRun(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'duration', 'passed_cases', 'failed_cases'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Performance Metrics Collection
+    match /performance_metrics/{metricId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(metricId) && isValidPerformanceMetric(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications Collection
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && existing().user_id == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(notifId) && isValidNotification(incoming());
+      allow update: if isSignedIn() && existing().user_id == request.auth.uid && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isSignedIn() && existing().user_id == request.auth.uid;
+    }
+
+    // Activities Collection
+    match /activities/{actId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(actId) && isValidActivity(incoming());
+      allow update, delete: if false; // Immutable audit logs
+    }
+
+    // User Settings Collection
+    match /user_settings/{settingId} {
+      allow read: if isSignedIn() && existing().user_id == request.auth.uid;
+      allow create: if isVerified() && isValidId(settingId) && isValidUserSettings(incoming()) && isOwner(incoming().user_id);
+      allow update: if isVerified() && isValidId(settingId) && isValidUserSettings(incoming()) && isOwner(existing().user_id);
+      allow delete: if isAdmin() || (isOwner(existing().user_id));
+    }
+
+    // Attachments Collection
+    match /attachments/{attachId} {
+      allow read: if isSignedIn();
+      allow create: if isQA() && isValidId(attachId) && isValidAttachment(incoming()) && (
+        incoming().uploaded_by_id == request.auth.uid &&
+        exists(/databases/$(database)/documents/defects/$(incoming().defect_id))
+      );
+      allow update: if false; // Attachment metadata is immutable
+      allow delete: if isAdmin() || (existing().uploaded_by_id == request.auth.uid);
+    }
+
+  }
+}

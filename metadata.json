@@ -1,0 +1,6 @@
+{
+  "name": "QA Pulse",
+  "description": "A comprehensive QA Management Platform for managing projects, test suites, executing runs, triaging defects, tracking performance, and managing team settings in real time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

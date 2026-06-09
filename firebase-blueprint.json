@@ -1,0 +1,270 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authorized QA Pulse team members and access roles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "department": { "type": "string" },
+        "designation": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "QA Lead", "QA Engineer", "Viewer"] },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "name", "role", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A software workspace or system under test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "Environment": {
+      "title": "Environment",
+      "description": "Target environments (Dev, Staging, QA, Production) for test scoping",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Down"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "url", "status"]
+    },
+    "Defect": {
+      "title": "Defect",
+      "description": "A recorded software bug with triaging and relationship mappings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "defect_id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "severity": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "status": { "type": "string", "enum": ["Open", "In Progress", "Resolved", "Closed"] },
+        "assignee_id": { "type": "string" },
+        "reporter_id": { "type": "string" },
+        "project_id": { "type": "string" },
+        "environment_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "defect_id", "title", "severity", "priority", "status", "reporter_id", "project_id", "environment_id"]
+    },
+    "DefectComment": {
+      "title": "DefectComment",
+      "description": "Discussion post from a QA engineer on an active defect",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "defect_id": { "type": "string" },
+        "author_id": { "type": "string" },
+        "author_name": { "type": "string" },
+        "author_avatar": { "type": "string" },
+        "comment": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "defect_id", "author_id", "author_name", "comment", "created_at"]
+    },
+    "TestSuite": {
+      "title": "TestSuite",
+      "description": "A collection of related test plans for structural execution validations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "project_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "project_id"]
+    },
+    "TestCase": {
+      "title": "TestCase",
+      "description": "A individual test case detailing replication criteria",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "suite_id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "steps": { "type": "array" },
+        "expected_result": { "type": "string" },
+        "automation_status": { "type": "string", "enum": ["Automated", "Manual"] },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "suite_id", "title", "expected_result"]
+    },
+    "TestRun": {
+      "title": "TestRun",
+      "description": "A tracked execution instance of an active test suite",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "suite_id": { "type": "string" },
+        "environment_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["Passed", "Failed", "Partial", "Running"] },
+        "creator_id": { "type": "string" },
+        "duration": { "type": "integer" },
+        "total_cases": { "type": "integer" },
+        "passed_cases": { "type": "integer" },
+        "failed_cases": { "type": "integer" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "suite_id", "environment_id", "status", "creator_id"]
+    },
+    "PerformanceMetric": {
+      "title": "PerformanceMetric",
+      "description": "Network SLAs of monitored server host end-points",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "environment_id": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "latency": { "type": "number" },
+        "throughput": { "type": "number" },
+        "error_rate": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "environment_id", "endpoint", "latency", "throughput", "error_rate", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User alerts regarding assigned bugs, failed runs or alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "type", "title", "message", "read", "created_at"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Broad operational activity logs representing security context changes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "user_name": { "type": "string" },
+        "user_avatar": { "type": "string" },
+        "category": { "type": "string", "enum": ["Auth", "Defect", "Test", "Settings", "Project"] },
+        "action": { "type": "string" },
+        "description": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "user_name", "category", "action", "created_at"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User specific email, browser alert preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "email_alerts": { "type": "boolean" },
+        "browser_push": { "type": "boolean" },
+        "automation_sync": { "type": "boolean" },
+        "urgent_only": { "type": "boolean" },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "user_id", "email_alerts", "browser_push", "automation_sync", "urgent_only", "theme", "created_at"]
+    },
+    "FileAttachment": {
+      "title": "FileAttachment",
+      "description": "Asset details representing attachments uploaded to issues",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "defect_id": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "size": { "type": "number" },
+        "mime_type": { "type": "string" },
+        "uploaded_by_id": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "defect_id", "name", "url", "size", "mime_type", "uploaded_by_id", "created_at"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Authorized system user profiles"
+    },
+    "projects": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Tracked client project spaces"
+    },
+    "environments": {
+      "schema": { "$ref": "#/entities/Environment" },
+      "description": "SLA targeted environments"
+    },
+    "defects": {
+      "schema": { "$ref": "#/entities/Defect" },
+      "description": "Recorded platform defect items"
+    },
+    "defect_comments": {
+      "schema": { "$ref": "#/entities/DefectComment" },
+      "description": "Comment feeds for triaged defects"
+    },
+    "test_suites": {
+      "schema": { "$ref": "#/entities/TestSuite" },
+      "description": "Defined execution test cases and test suites"
+    },
+    "test_cases": {
+      "schema": { "$ref": "#/entities/TestCase" },
+      "description": "Testing actions and steps mapped per suite"
+    },
+    "test_runs": {
+      "schema": { "$ref": "#/entities/TestRun" },
+      "description": "Test suites execution status entries"
+    },
+    "performance_metrics": {
+      "schema": { "$ref": "#/entities/PerformanceMetric" },
+      "description": "Live SLA trace evaluations"
+    },
+    "notifications": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Real-time user triggers/alerts"
+    },
+    "activities": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "Operational change actions and security traces"
+    },
+    "user_settings": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Settings toggles representing alert parameters"
+    },
+    "attachments": {
+      "schema": { "$ref": "#/entities/FileAttachment" },
+      "description": "File metadata details for bugs"
+    }
+  }
+}
